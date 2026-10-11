@@ -2,8 +2,11 @@ model_list:
 
 litellm_settings:
   set_verbose: false
+  callbacks: ["prometheus"]
+  prometheus_initialize_budget_metrics: true
+  prometheus_metrics_max_series_per_metric: 5000
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  callbacks: ["smtp_email"] 
+  callbacks: ["prometheus"]
   disable_env_credential_login: true

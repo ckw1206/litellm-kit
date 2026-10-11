@@ -24,12 +24,14 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:4000:4000"
+      - "0.0.0.0:4001:4001"
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
       - DATABASE_URL=${DATABASE_URL}
       - SCHEMA_NAME=${SCHEMA_NAME}
-      - STORE_MODEL_IN_DB=${STORE_MODEL_IN_DB}
+      - STORE_MODEL_IN_DB=True
+      - PROMETHEUS_METRICS_PORT=4001
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_TLS=${SMTP_TLS}
       - SMTP_PORT=${SMTP_PORT}
