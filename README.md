@@ -11,17 +11,14 @@
 ## Quick Start
 
 ```bash
-# Start
-docker compose up -d
+./start.sh                 # docker compose up -d + ps (creates .env from template if missing)
+./stop.sh                  # docker compose down
 
 # Check status
 docker compose ps
 
 # Logs
 docker compose logs -f litellm
-
-# Stop
-docker compose down
 ```
 
 Environment: see `.env.example` (copy to `.env` and fill in secrets).
@@ -102,6 +99,8 @@ In that case, check [GitHub Issue #35654](https://github.com/BerriAI/litellm/iss
 /opt/litellm/
 ├── .env                     # Secrets (gitignored)
 ├── .env.example             # Environment template
+├── start.sh                 # Start the stack (creates .env if missing)
+├── stop.sh                  # Stop the stack (keeps volumes)
 ├── config.yaml              # LiteLLM config (model list, auth, etc.)
 ├── docker-compose.yml       # Container orchestration
 ├── .git/                    # Git repo (tracks config + patches only)
