@@ -65,14 +65,14 @@ the patched files. Re-apply with:
 
 ```bash
 # Pull, patch, restart — all in one line
-docker compose pull && ./apply_patches.sh && docker compose restart litellm
+docker compose pull && ./scripts/apply_patches.sh && docker compose restart litellm
 ```
 
 Or step-by-step:
 
 ```bash
 docker compose pull                 # 1. pull new image
-./apply_patches.sh                  # 2. re-apply patches (or --check to preview)
+./scripts/apply_patches.sh          # 2. re-apply patches (or --check to preview)
 docker compose restart litellm      # 3. restart to load patched code
 ```
 
@@ -106,8 +106,9 @@ In that case, check [GitHub Issue #35654](https://github.com/BerriAI/litellm/iss
 ├── docker-compose.yml       # Container orchestration
 ├── .git/                    # Git repo (tracks config + patches only)
 ├── README.md                # This file
-├── apply_patches.py         # Content-based Python patcher
-├── apply_patches.sh         # Wrapper script (run this after pull)
+├── scripts/
+│   ├── apply_patches.py     # Content-based Python patcher
+│   └── apply_patches.sh     # Wrapper script (run this after pull)
 └── patches/
     └── 0001-prometheus-...  # Patch file (reference)
 ```

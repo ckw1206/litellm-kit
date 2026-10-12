@@ -9,7 +9,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PATCHES_DIR="$SCRIPT_DIR/patches"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+PATCHES_DIR="$REPO_ROOT/patches"
 
 # Work from inside the litellm container
 CONTAINER_NAME="${LITELLM_CONTAINER:-litellm}"
