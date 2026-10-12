@@ -1,0 +1,106 @@
+From: kylewang <kylewang2655@gmail.com>
+Subject: [PATCH] prometheus: cleanup stale litellm_deployment_state series on deployment delete/replace
+
+Add clear_deployment_metrics() to PrometheusLogger and call it from
+Router.delete_deployment() and Router.upsert_deployment() so that
+stale gauge series (left over from reconfigured api_base values,
+deleted models, or blocked deployments) are removed from Prometheus.
+
+Without this, every deployment state change accumulates orphaned series
+in the litellm_deployment_state gauge, causing stale metric labels and
+misleading health signals.
+---
+ litellm/integrations/prometheus.py     | 29 +++++++++++++++++++++++
+ litellm/router.py                      | 31 +++++++++++++++++++++++
+ 2 files changed, 60 insertions(+)
+
+diff --git a/litellm/integrations/prometheus.py b/litellm/integrations/prometheus.py
+index abc1234..def5678 100644
+--- a/litellm/integrations/prometheus.py
++++ b/litellm/integrations/prometheus.py
+@@ -3798,6 +3798,35 @@ class PrometheusLogger(CustomLogger):
+         ):  # type: ignore
+             self.set_litellm_deployment_state(1, litellm_model_name, model_id, api_base, api_provider)
+ 
++    def clear_deployment_metrics(
++        self,
++        model_id: str,
++        litellm_model_name: str,
++        api_base: str,
++        api_provider: str,
++    ) -> None:
++        """
++        Remove litellm_deployment_state gauge series for a given model_id.
++
++        Called when a deployment is deleted or replaced so stale series
++        (e.g. from a reconfigured api_base) do not persist in Prometheus.
++        """
++        try:
++            if not model_id:
++                return
++            _labels: Final = prometheus_label_factory(
++                supported_enum_labels=self.get_labels_for_metric(metric_name="litellm_deployment_state"),
++                enum_values=UserAPIKeyLabelValues,
++                proxy_router=False,
++            )
++            _labels.labels.append(
++                Label(name="litellm_model_name", value=litellm_model_name or "")
++            )
++            _labels.labels.append(Label(name="model_id", value=model_id))
++            _labels.labels.append(Label(name="api_base", value=api_base or ""))
++            _labels.labels.append(Label(name="api_provider", value=api_provider or ""))
++            _final_labels = {l.name: l.value for l in _labels.labels}
++            self.litellm_deployment_state.remove(**_final_labels)
++        except Exception:
++            pass
++
+     def set_deployment_complete_outage(
+         self,
+         litellm_model_name: str,
+
+diff --git a/litellm/router.py b/litellm/router.py
+index 1234567..789abcd 100644
+--- a/litellm/router.py
++++ b/litellm/router.py
+@@ -10312,6 +10312,18 @@ class Router:
+                 # Free the outgoing deployment's pre-routing strategy slot (keyed by the
+                 # OLD model_name/tags) before the re-add below re-registers it.
+                 self._unregister_pre_routing_strategy_for_deployment(deployment=_deployment_on_router)
++                # Clear stale prometheus deployment-state series for the replaced deployment
++                try:
++                    from litellm.router_utils.cooldown_callbacks import get_prometheus_logger_from_callbacks
++                    _pl: Any = get_prometheus_logger_from_callbacks()
++                    if _pl is not None:
++                        _pl.clear_deployment_metrics(
++                            model_id=_deployment_on_router.model_info.id or "",
++                            litellm_model_name=_deployment_on_router.model_name,
++                            api_base=_deployment_on_router.litellm_params.api_base or "",
++                            api_provider=_deployment_on_router.litellm_params.custom_llm_provider or "",
++                        )
++                except Exception:
++                    pass
++
+             # if the model_id is not in router
+ 
+@@ -10575,6 +10587,18 @@ class Router:
+                         "the deployment is out of the model_list and its indices are repaired",
+                         id,
+                     )
++                # Clear stale prometheus deployment-state series for this model_id
++                try:
++                    from litellm.router_utils.cooldown_callbacks import get_prometheus_logger_from_callbacks
++                    _pl: Any = get_prometheus_logger_from_callbacks()
++                    if _pl is not None:
++                        _item_model_name = item.model_name if isinstance(item, Deployment) else (item.get("model_name") or "")
++                        _item_litellm_params = item.litellm_params if isinstance(item, Deployment) else (item.get("litellm_params") or {})
++                        _pl.clear_deployment_metrics(
++                            model_id=id,
++                            litellm_model_name=_item_model_name,
++                            api_base=_item_litellm_params.api_base or "",
++                            api_provider=_item_litellm_params.custom_llm_provider or "",
++                        )
++                except Exception:
++                    pass
+                 return item
+             else:
+                 return None
